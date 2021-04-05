@@ -1,4 +1,42 @@
-{$Z1}
+// Translation of the HarfBuzz interface into Delphi Language/Object Pascal
+// Based on version 2.8.0
+// This header file is Copyright (C) 2021 by Benjamin Desef
+// You may use it under the same conditions as HarfBuzz itself, i.e., the "Old MIT"
+// license.
+// The original HarfBuzz copyright header is
+// Copyright © 2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2020  Google, Inc.
+// Copyright © 2018,2019,2020  Ebrahim Byagowi
+// Copyright © 2019,2020  Facebook, Inc.
+// Copyright © 2012  Mozilla Foundation
+// Copyright © 2011  Codethink Limited
+// Copyright © 2008,2010  Nokia Corporation and/or its subsidiary(-ies)
+// Copyright © 2009  Keith Stribley
+// Copyright © 2009  Martin Hosken and SIL International
+// Copyright © 2007  Chris Wilson
+// Copyright © 2006  Behdad Esfahbod
+// Copyright © 2005  David Turner
+// Copyright © 2004,2007,2008,2009,2010  Red Hat, Inc.
+// Copyright © 1998-2004  David Turner and Werner Lemberg
+//
+// Permission is hereby granted, without written agreement and without
+// license or royalty fees, to use, copy, modify, and distribute this
+// software and its documentation for any purpose, provided that the
+// above copyright notice and the following two paragraphs appear in
+// all copies of this software.
+//
+// IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE TO ANY PARTY FOR
+// DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES
+// ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS DOCUMENTATION, EVEN
+// IF THE COPYRIGHT HOLDER HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH
+// DAMAGE.
+//
+// THE COPYRIGHT HOLDER SPECIFICALLY DISCLAIMS ANY WARRANTIES, INCLUDING,
+// BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+// FITNESS FOR A PARTICULAR PURPOSE.  THE SOFTWARE PROVIDED HEREUNDER IS
+// ON AN "AS IS" BASIS, AND THE COPYRIGHT HOLDER HAS NO OBLIGATION TO
+// PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+
+{$Z4}
 Unit uHarfBuzz;
 
 Interface
@@ -86,8 +124,9 @@ Type
    Public
       Class Function FromString(Const AStr: AnsiString): THBLanguage; Static; Inline;
       Function ToString: AnsiString; Inline;
-
       Class Function Default: THBLanguage; Static; Inline;
+      Class Operator Implicit(Const AValue: AnsiString): THBLanguage; Inline;
+      Class Operator Implicit(Const AValue: THBLanguage): AnsiString; Inline;
    End;
 
    THBLanguageHelper = Record Helper For THBLanguage
@@ -1435,9 +1474,19 @@ Begin
    Result := hb_language_from_string(PAnsiChar(AStr), Length(AStr));
 End;
 
+Class Operator THBLanguage.Implicit(Const AValue: AnsiString): THBLanguage;
+Begin
+   Result := THBLanguage.FromString(AValue);
+End;
+
+Class Operator THBLanguage.Implicit(Const AValue: THBLanguage): AnsiString;
+Begin
+   Result := AValue.ToString;
+End;
+
 Function THBLanguage.ToString: AnsiString;
 Begin
-   Result := hb_language_to_string(Self);
+   Result := AnsiString(hb_language_to_string(Self));
 End;
 
 { THBScriptHelper }

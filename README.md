@@ -1,9 +1,9 @@
 # TextShaping4Delphi
 This contains Delphi headers for FreeType and harfbuzz.
-All headers require at least version XE3. They should be compatible with FreePascal, just be sure to replace "[Ref] Const" by "Constref" in all source files. They should be compatible with both x86_32 and x86_64.
+All headers require at least version XE3. They should be compatible with FreePascal, just be sure to replace `[Ref] Const` by `Constref` in all source files. They should be compatible with both x86_32 and x86_64.
 
 ## FreeType
-The header translation is based on version 2.9.1. It includes the header files `ftsystem.h`, `fterrors.h`, `ftimage.h`, `fttypes.h`, `ftlcdfil.h`, `freetype.h`, `ftmodapi.h`, and `ftobj.h`.
+The header translation is based on version 2.9.1. It includes the header files `ftsystem.h`, `fterrors.h`, `ftcolor.h`, `ftbitmap.h`, `ftimage.h`, `fttypes.h`, `ftlcdfil.h`, `freetype.h`, `ftmodapi.h`, and `ftobj.h`.
 
 ## HarzBuzz
 The header translation is based on version 2.8.0. It includes the header files `hb-common.h`, `hb-blob.h`, `hb-unicode.h`, `hb-set.h`, `hb-face.h`, `hb-font.h`, `hb-buffer.h`, `hb-map.h`, `hb-shape-plan.h`, `hb-version.h`, and `hb-ft.h`.

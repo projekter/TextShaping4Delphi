@@ -3,6 +3,9 @@
 // This header file is Copyright (C) 2021 by Benjamin Desef
 // You may use it under the same conditions as FreeType itself, i.e., you may choose to
 // either apply the FreeType License or the GNU General Public License version 2.
+// The original FreeType copyright header is
+// Copyright (C) 1996-2021 by
+// David Turner, Robert Wilhelm, and Werner Lemberg.
 
 {$Z1}
 Unit uFreeType;
@@ -75,6 +78,28 @@ Type
       Procedure Close; Inline;
    End;
 {$ENDREGION}
+{$REGION 'ftcolor.h'}
+   // Glyph Color Management
+
+   PFTColor = ^TFTColor;
+
+   TFTColor = Record
+   Public
+      Blue, Green, Red, Alpha: Byte;
+      Constructor Mix(Const ABlue, AGreen, ARed, AAlpha: Byte);
+   End;
+
+   TFTPaletteFlag  = (ftPaletteForLightBackground, ftPaletteForDarkBackground);
+   TFTPaletteFlags = Set Of ftPaletteForLightBackground .. TFTPaletteFlag($F);
+
+   TFTPaletteData = Record
+      NumPalettes: Word;
+      PaletteNameIds: Word;
+      PaletteFlags: ^TFTPaletteFlags;
+      NumPaletteEntries: Word;
+      PaletteEntryNameIds: PWord;
+   End;
+{$ENDREGION}
 {$REGION 'ftimage.h'}
 
    // Basic types
@@ -108,6 +133,13 @@ Type
 {$HINTS ON}
       Function GetScanLine(Const ALine: Cardinal): PByte; Inline;
    Public
+      Procedure Init; Inline;
+      Procedure Copy(Var Target: TFTBitmap); Inline;
+      Procedure Embolden(Const AXStrength, AYStrength: TFTPos); Inline;
+      Procedure Convert(Var Target: TFTBitmap; Const Alignment: Integer); Inline;
+      Procedure Blend(Const ASourceOffset: TFTVector; Var Target: TFTBitmap; Var TargetOffset: TFTVector; Const AColor: TFTColor); Inline;
+      Procedure Done; Inline;
+
       Property ScanLine[Const ALine: Cardinal]: PByte Read GetScanLine;
    End;
 
@@ -257,7 +289,7 @@ Type
       Function IsEmpty: Boolean; Inline;
    End;
 {$ENDREGION}
-{$REGION 'ftlcdfill.h'}
+{$REGION 'ftlcdfil.h'}
    // Subpixel Rendering
 
    TFTLcdFilter = (ftlcdfNone = 0, ftlcdfDefault = 1, ftlcdfLight = 2, ftlcdfLegacy1 = 3, ftlcdfLegacy = 16);
@@ -455,6 +487,9 @@ Type
       End;
 
       TFTCharVariantDefault = (ftcvdStandardCMap = 1, ftcsdVariationSelectorCMap = 0, ftcsdNoVariation = Integer( -1));
+
+      PPaletteArray = ^TPaletteArray;
+      TPaletteArray = Packed Array [0 .. 0] Of TFTColor;
    Public
       Function IsNamedInstance: Boolean; Inline;
 
@@ -511,6 +546,10 @@ Type
       Function GetVariantSelectors: TArray<Cardinal>;
       Function GetVariantsOfChar(Const ACharCode: LongWord): TArray<Cardinal>;
       Function GetCharsOfVariant(Const AVariantSelector: LongWord): TArray<Cardinal>;
+
+      Function GetPalette: TFTPaletteData; Inline;
+      Function SelectPalette(Const APaletteIndex: Word): PPaletteArray; Inline;
+      Procedure SetForegroundColor(Const AForegroundColor: TFTColor); Inline;
 
       Property NumFaces: LongInt Read GetNumFaces_;
       Property FaceIndex: LongInt Read GetFaceIndex;
@@ -582,6 +621,7 @@ Type
    Public
       Procedure RenderGlyph(Const ARenderMode: TFTRenderMode); Inline;
       Procedure SubGlyphInfo(Const SubIndex: Cardinal; Out OIndex: Integer; Out OFlags: TFTSubGlyphFlags; Out OArg1, OArg2: Integer; Out OTransform: TFTMatrix); Inline;
+      Procedure OwnBitmap; Inline;
    End;
 
    // Functions
@@ -730,6 +770,21 @@ Procedure FT_Vector_Transform(Var Vector: TFTVector; [Ref] Const AMatrix: TFTMat
 // FreeType Version
 Procedure FT_Library_Version(Const ALibrary: TFTLibrary; Out OMajor, OMinor, OPatch: Integer); Cdecl; External FreeTypeDLL;
 {$ENDREGION}
+{$REGION 'ftcolor.h'}
+Function FT_Palette_Data_Get(Const AFace: TFTFace; Out OPalette: TFTPaletteData): TFTError; Cdecl; External FreeTypeDLL;
+Function FT_Palette_Select(Const AFace: TFTFace; Const APaletteIndex: Word; Out OPalette: PFTColor): TFTError; Cdecl; External FreeTypeDLL;
+Function FT_Palette_Set_Foreground_Color(Const AFace: TFTFace; Const AForegroundColor: TFTColor): TFTError; Cdecl; External FreeTypeDLL;
+{$ENDREGION}
+{$REGION 'ftbitmap.h'}
+Procedure FT_Bitmap_Init(Var Bitmap: TFTBitmap); Cdecl; External FreeTypeDLL;
+Function FT_Bitmap_Copy(Const ALibrary: TFTLibrary; [Ref] Const ASource: TFTBitmap; Var Target: TFTBitmap): TFTError; Cdecl; External FreeTypeDLL;
+Function FT_Bitmap_Embolden(Const ALibrary: TFTLibrary; Var Bitmap: TFTBitmap; Const AXStrength, AYStrength: TFTPos): TFTError; Cdecl; External FreeTypeDLL;
+Function FT_Bitmap_Convert(Const ALibrary: TFTLibrary; [Ref] Const ASource: TFTBitmap; Var Target: TFTBitmap; Const Alignment: Integer): TFTError; Cdecl; External FreeTypeDLL;
+Function FT_Bitmap_Blend(Const ALibrary: TFTLibrary; [Ref] Const ASource: TFTBitmap; Const ASourceOffset: TFTVector; Var Target: TFTBitmap; Var TargetOffset: TFTVector; Const AColor: TFTColor)
+   : TFTError; Cdecl; External FreeTypeDLL;
+Function FT_GlyphSlot_Own_Bitmap(Var Slot: TFTGlyphSlot): TFTError; Cdecl; External FreeTypeDLL;
+Function FT_Bitmap_Done(Const ALibrary: TFTLibrary; Var Bitmap: TFTBitmap): TFTError; Cdecl; External FreeTypeDLL;
+{$ENDREGION}
 {$REGION 'ftmodapi.h'}
 Function FT_Add_Module(&Library: TFTLibrary; [Ref] Const AClass: TFTModuleClass): TFTError; Cdecl; External FreeTypeDLL;
 Function FT_Get_Module(&Library: TFTLibrary; Const AModuleName: PAnsiChar): TFTModule; Cdecl; External FreeTypeDLL;
@@ -777,11 +832,51 @@ Begin
    CloseFunc(Self);
 End;
 
+{ TFTColor }
+
+Constructor TFTColor.Mix(Const ABlue, AGreen, ARed, AAlpha: Byte);
+Begin
+   Blue := ABlue;
+   Green := AGreen;
+   Red := ARed;
+   Alpha := AAlpha;
+End;
+
 { TFTBitmap }
+
+Procedure TFTBitmap.Blend(Const ASourceOffset: TFTVector; Var Target: TFTBitmap; Var TargetOffset: TFTVector; Const AColor: TFTColor);
+Begin
+   TFTManager.Error(FT_Bitmap_Blend(TFTManager.&Library, Self, ASourceOffset, Target, TargetOffset, AColor));
+End;
+
+Procedure TFTBitmap.Convert(Var Target: TFTBitmap; Const Alignment: Integer);
+Begin
+   TFTManager.Error(FT_Bitmap_Convert(TFTManager.&Library, Self, Target, Alignment));
+End;
+
+Procedure TFTBitmap.Copy(Var Target: TFTBitmap);
+Begin
+   TFTManager.Error(FT_Bitmap_Copy(TFTManager.&Library, Self, Target));
+End;
+
+Procedure TFTBitmap.Done;
+Begin
+   TFTManager.Error(FT_Bitmap_Done(TFTManager.&Library, Self));
+End;
+
+Procedure TFTBitmap.Embolden(Const AXStrength, AYStrength: TFTPos);
+Begin
+   TFTManager.Error(FT_Bitmap_Embolden(TFTManager.&Library, Self, AXStrength, AYStrength));
+End;
 
 Function TFTBitmap.GetScanLine(Const ALine: Cardinal): PByte;
 Begin
    Result := PByte(NativeUInt(Buffer) + NativeInt(ALine) * Pitch);
+End;
+
+Procedure TFTBitmap.Init;
+Begin
+   FT_Bitmap_Init(Self);
 End;
 
 { TFTCurveTagsHelper }
@@ -856,6 +951,11 @@ Begin
 End;
 
 { TFTGlyphSlot }
+
+Procedure TFTGlyphSlot.OwnBitmap;
+Begin
+   TFTManager.Error(FT_GlyphSlot_Own_Bitmap(Self));
+End;
 
 Procedure TFTGlyphSlot.RenderGlyph(Const ARenderMode: TFTRenderMode);
 Begin
@@ -1108,6 +1208,11 @@ Begin
    Result := FValue^.NumGlyphs;
 End;
 
+Function TFTFace.GetPalette: TFTPaletteData;
+Begin
+   TFTManager.Error(FT_Palette_Data_Get(Self, Result));
+End;
+
 Function TFTFace.GetPostscriptName: AnsiString;
 Begin
    Result := AnsiString(FT_Get_Postscript_Name(Self));
@@ -1304,6 +1409,11 @@ Begin
    TFTManager.Error(FT_Select_CharMap(Self, AEncoding));
 End;
 
+Function TFTFace.SelectPalette(Const APaletteIndex: Word): PPaletteArray;
+Begin
+   TFTManager.Error(FT_Palette_Select(Self, APaletteIndex, PFTColor(Result)));
+End;
+
 Procedure TFTFace.SelectSize(Const AStrikeIndex: Integer);
 Begin
    TFTManager.Error(FT_Select_Size(Self, AStrikeIndex));
@@ -1317,6 +1427,11 @@ End;
 Procedure TFTFace.SetCharSize(Const ACharWidth, ACharHeight: TFTF26Dot6; Const AHorzResolution, AVertResolution: Cardinal);
 Begin
    TFTManager.Error(FT_Set_Char_Size(Self, ACharWidth, ACharHeight, AHorzResolution, AVertResolution));
+End;
+
+Procedure TFTFace.SetForegroundColor(Const AForegroundColor: TFTColor);
+Begin
+   TFTManager.Error(FT_Palette_Set_Foreground_Color(Self, AForegroundColor));
 End;
 
 Procedure TFTFace.SetGeneric(Const AValue: TFTGeneric);
