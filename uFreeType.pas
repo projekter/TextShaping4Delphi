@@ -742,7 +742,7 @@ Function FT_Get_Kerning(Const AFace: TFTFace; Const ALeftGlyph, ARightGlyph: Car
 Function FT_Get_Track_Kerning(Const AFace: TFTFace; Const APointSize: TFTFixed; Const ADegree: Integer; Out OKerning: TFTFixed): TFTError; Cdecl; External FreeTypeDLL;
 Function FT_Get_Glyph_Name(Const AFace: TFTFace; Const AGlyphIndex: Cardinal; Const ABuffer: Pointer; Const ABufferMax: Cardinal): TFTError; Cdecl; External FreeTypeDLL;
 Function FT_Get_Postscript_Name(Const AFace: TFTFace): PAnsiChar; Cdecl; External FreeTypeDLL;
-Function FT_Select_CharMap(Face: TFTFace; Const AEncoding: TFTEncoding): TFTError; Cdecl; External FreeTypeDLL;
+Function FT_Select_Charmap(Face: TFTFace; Const AEncoding: TFTEncoding): TFTError; Cdecl; External FreeTypeDLL;
 Function FT_Set_Charmap(Face: TFTFace; Var CharMap: TFTCharMap): TFTError; Cdecl; External FreeTypeDLL;
 Function FT_Get_Charmap_Index([Ref] Const ACharmap: TFTCharMap): Integer; Cdecl; External FreeTypeDLL;
 Function FT_Get_Char_Index(Const AFace: TFTFace; Const ACharCode: LongWord): Cardinal; Cdecl; External FreeTypeDLL;
@@ -1406,7 +1406,7 @@ End;
 
 Procedure TFTFace.SelectCharMap(Const AEncoding: TFTEncoding);
 Begin
-   TFTManager.Error(FT_Select_CharMap(Self, AEncoding));
+   TFTManager.Error(FT_Select_Charmap(Self, AEncoding));
 End;
 
 Function TFTFace.SelectPalette(Const APaletteIndex: Word): PPaletteArray;
