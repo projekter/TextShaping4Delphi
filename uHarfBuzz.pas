@@ -981,7 +981,7 @@ Type
       Property Script: THBScript Read GetScript Write SetScript;
       Property Language: THBLanguage Read GetLanguage Write SetLanguage;
       Property SegmentProperties: THBSegmentProperties Read GetSegmentProperties Write SetSegmentProperties;
-      Property ClusterLeven: THBBufferClusterLevel Read GetClusterLevel Write SetClusterLevel;
+      Property ClusterLevel: THBBufferClusterLevel Read GetClusterLevel Write SetClusterLevel;
       Property Flags: THBBufferFlags Read GetFlags Write SetFlags;
       Property ReplacementCodepoint: THBCodepoint Read GetReplacementCodepoint Write SetReplacementCodepoint;
       Property InvisibleGlyph: THBCodepoint Read GetInvisibleGlyph Write SetInvisibleGlyph;
