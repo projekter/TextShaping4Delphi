@@ -1,5 +1,5 @@
 // Translation of the HarfBuzz interface into Delphi Language/Object Pascal
-// Based on version 2.8.0
+// Based on version 2.9.0
 // This header file is Copyright (C) 2021 by Benjamin Desef
 // You may use it under the same conditions as HarfBuzz itself, i.e., the "Old MIT"
 // license.
@@ -46,7 +46,7 @@ Interface
 {$MESSAGE FATAL 'Replace every instance of "[Ref] Const" in this file by "Constref", then disable this error.'}
 {$ENDIF}
 
-Uses SysUtils, uFreeType;
+Uses SysUtils{$IFNDEF VER230}, AnsiStrings{$ENDIF}, uFreeType;
 
 Const
    HarfbuzzDLL = 'harfbuzz.dll';
@@ -385,10 +385,12 @@ Type
       // internal type
    Strict Private
    Const
-      sErrorUserData = 'Error setting blob user data';
+      sErrorUserData  = 'Error setting blob user data';
+      sCreationFailed = 'Blob creation failed';
    Public
-      Class Function Create(Const AData: TBytes; Const AMode: THBMemoryMode; Const AUserData: Pointer; Const ADestroy: THBDestroyFunc): THBBlob; Overload; Static; Inline;
-      Class Function Create(Const AFileName: AnsiString): THBBlob; Overload; Static; Inline;
+      Class Function Create(Const AData: TBytes; Const AMode: THBMemoryMode; Const AUserData: Pointer; Const ADestroy: THBDestroyFunc; Const AFailOnError: Boolean = False): THBBlob; Overload;
+         Static; Inline;
+      Class Function Create(Const AFileName: AnsiString; Const AFailOnError: Boolean = False): THBBlob; Overload; Static; Inline;
       Function CreateSubBlob(Const AOffset, ALength: Integer): THBBlob; Inline;
       Function CopyWritable: THBBlob; Inline;
       Class Function GetEmpty: THBBlob; Static; Inline;
@@ -538,6 +540,7 @@ Type
       Procedure SetUserData(Const AKey; Const AData: Pointer; Const ADestroy: THBDestroyFunc; Const AReplace: Boolean); Inline;
       Function GetUserData(Const AKey): Pointer; Inline;
       Function AllocationSuccessful: Boolean; Inline;
+      Function Copy: THBSet; Inline;
       Procedure Clear; Inline;
       Function IsEmpty: Boolean; Inline;
       Function Has(Const ACodepoint: THBCodepoint): Boolean; Inline;
@@ -1049,9 +1052,9 @@ Type
    Strict Private
    Const
       HB_VERSION_MAJOR  = 2;
-      HB_VERSION_MINOR  = 8;
+      HB_VERSION_MINOR  = 9;
       HB_VERSION_MICRO  = 0;
-      HB_VERSION_STRING = '2.8.0';
+      HB_VERSION_STRING = '2.9.0';
    Public
       Class Function VersionString: AnsiString; Static; Inline;
 
@@ -1079,7 +1082,10 @@ Procedure hb_variation_to_string([Ref] Const AVariation: THBVariation; Buf: PAns
 {$ENDREGION}
 {$REGION 'hb-blob.h'}
 Function hb_blob_create(Const AData: PByte; Const ALength: Cardinal; Const AMode: THBMemoryMode; Const AUserData: Pointer; Const ADestroy: THBDestroyFunc): THBBlob; Cdecl; External HarfbuzzDLL;
+Function hb_blob_create_or_fail(Const AData: PByte; Const ALength: Cardinal; Const AMode: THBMemoryMode; Const AUserData: Pointer; Const ADestroy: THBDestroyFunc): THBBlob; Cdecl;
+   External HarfbuzzDLL;
 Function hb_blob_create_from_file(Const AFileName: PAnsiChar): THBBlob; Cdecl; External HarfbuzzDLL;
+Function hb_blob_create_from_file_or_fail(Const AFileName: PAnsiChar): THBBlob; Cdecl; External HarfbuzzDLL;
 Function hb_blob_create_sub_blob(Parent: THBBlob; Const AOffset, ALength: Integer): THBBlob; Cdecl; External HarfbuzzDLL;
 Function hb_blob_copy_writable_or_fail(Const ABlob: THBBlob): THBBlob; Cdecl; External HarfbuzzDLL;
 Function hb_blob_get_empty: THBBlob; Cdecl; External HarfbuzzDLL;
@@ -1131,6 +1137,7 @@ Procedure hb_set_destroy(&Set: THBSet); Cdecl; External HarfbuzzDLL;
 Function hb_set_set_user_data(&Set: THBSet; Const AKey; Const AData: Pointer; Const ADestroy: THBDestroyFunc; Const AReplace: THBBool): THBBool; Cdecl; External HarfbuzzDLL;
 Function hb_set_get_user_data(Const ASet: THBSet; Const AKey): Pointer; Cdecl; External HarfbuzzDLL;
 Function hb_set_allocation_successful(Const ASet: THBSet): THBBool; Cdecl; External HarfbuzzDLL;
+Function hb_set_copy(Const ASet: THBSet): THBSet; Cdecl; External HarfbuzzDLL;
 Procedure hb_set_clear(&Set: THBSet); Cdecl; External HarfbuzzDLL;
 Function hb_set_is_empty(Const ASet: THBSet): THBBool; Cdecl; External HarfbuzzDLL;
 Function hb_set_has(Const ASet: THBSet; Const ACodepoint: THBCodepoint): THBBool; Cdecl; External HarfbuzzDLL;
@@ -1417,7 +1424,7 @@ End;
 Function THBTagHelper.ToString: THBTagString;
 Begin
    hb_tag_to_string(Self, @Result[1]);
-   SetLength(Result, StrLen(PAnsiChar(@Result[1])));
+   SetLength(Result, {$IFNDEF VER230}AnsiStrings.{$ENDIF}StrLen(PAnsiChar(@Result[1])));
 End;
 
 { THBDirectionHelper }
@@ -1524,7 +1531,7 @@ Var
    Buf: Packed Array [0 .. 127] Of AnsiChar; // doc says 128 bytes are more than enough
 Begin
    hb_feature_to_string(Self, @Buf[0], 128);
-   SetLength(Result, StrLen(PAnsiChar(@Buf[0])));
+   SetLength(Result, {$IFNDEF VER230}AnsiStrings.{$ENDIF}StrLen(PAnsiChar(@Buf[0])));
    Move(Buf, Result[1], Length(Result));
 End;
 
@@ -1541,7 +1548,7 @@ Var
    Buf: Packed Array [0 .. 127] Of AnsiChar; // doc says 128 bytes are more than enough
 Begin
    hb_variation_to_string(Self, @Buf[0], 128);
-   SetLength(Result, StrLen(PAnsiChar(@Buf[0])));
+   SetLength(Result, {$IFNDEF VER230}AnsiStrings.{$ENDIF}StrLen(PAnsiChar(@Buf[0])));
    Move(Buf, Result[1], Length(Result));
 End;
 
@@ -1562,14 +1569,26 @@ Begin
    Result := hb_blob_copy_writable_or_fail(Self);
 End;
 
-Class Function THBBlob.Create(Const AData: TBytes; Const AMode: THBMemoryMode; Const AUserData: Pointer; Const ADestroy: THBDestroyFunc): THBBlob;
+Class Function THBBlob.Create(Const AData: TBytes; Const AMode: THBMemoryMode; Const AUserData: Pointer; Const ADestroy: THBDestroyFunc; Const AFailOnError: Boolean = False): THBBlob;
 Begin
-   Result := hb_blob_create(PByte(AData), Length(AData), AMode, AUserData, ADestroy);
+   If AFailOnError Then Begin
+      Result := hb_blob_create_or_fail(PByte(AData), Length(AData), AMode, AUserData, ADestroy);
+      If Not Assigned(Result.FValue) Then
+         Raise EHarfBuzz.Create(sCreationFailed);
+   End
+   Else
+      Result := hb_blob_create(PByte(AData), Length(AData), AMode, AUserData, ADestroy);
 End;
 
-Class Function THBBlob.Create(Const AFileName: AnsiString): THBBlob;
+Class Function THBBlob.Create(Const AFileName: AnsiString; Const AFailOnError: Boolean = False): THBBlob;
 Begin
-   Result := hb_blob_create_from_file(PAnsiChar(AFileName));
+   If AFailOnError Then Begin
+      Result := hb_blob_create_from_file_or_fail(PAnsiChar(AFileName));
+      If Not Assigned(Result.FValue) Then
+         Raise EHarfBuzz.Create(sCreationFailed);
+   End
+   Else
+      Result := hb_blob_create_from_file(PAnsiChar(AFileName));
 End;
 
 Function THBBlob.CreateSubBlob(Const AOffset, ALength: Integer): THBBlob;
@@ -1776,6 +1795,11 @@ Procedure THBSet.Clear;
 Begin
    hb_set_clear(Self);
 End;
+
+function THBSet.Copy: THBSet;
+begin
+   Result := hb_set_copy(Self);
+end;
 
 Function THBSet.Count: Cardinal;
 Begin
@@ -2301,7 +2325,7 @@ Var
    Buf: Packed Array [0 .. 127] Of AnsiChar; // doc says 128 bytes are more than enough
 Begin
    hb_font_glyph_to_string(Self, AGlyph, @Buf[0], 128);
-   SetLength(Result, StrLen(PAnsiChar(@Buf[0])));
+   SetLength(Result, {$IFNDEF VER230}AnsiStrings.{$ENDIF}StrLen(PAnsiChar(@Buf[0])));
    Move(Buf, Result[1], Length(Result));
 End;
 
@@ -2614,7 +2638,7 @@ Var
    I:   Integer;
 Begin
    Buf := hb_buffer_serialize_list_formats;
-   SetLength(Result, StrLen(PAnsiChar(Buf)));
+   SetLength(Result, {$IFNDEF VER230}AnsiStrings.{$ENDIF}StrLen(PAnsiChar(Buf)));
    For I := 0 To High(Result) Do Begin
       Result[I] := AnsiString(Buf^);
       Inc(Buf);
@@ -2800,7 +2824,7 @@ Var
    I:   Integer;
 Begin
    Buf := hb_shape_list_shapers;
-   System.SetLength(Result, StrLen(PAnsiChar(Buf)));
+   System.SetLength(Result, {$IFNDEF VER230}AnsiStrings.{$ENDIF}StrLen(PAnsiChar(Buf)));
    For I := 0 To High(Result) Do Begin
       Result[I] := AnsiString(Buf^);
       Inc(Buf);

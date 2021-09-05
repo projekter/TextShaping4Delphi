@@ -1,5 +1,5 @@
 // Translation of the FreeType interface into Delphi Language/Object Pascal
-// Based on version 2.9.1
+// Based on version 2.11.0
 // This header file is Copyright (C) 2021 by Benjamin Desef
 // You may use it under the same conditions as FreeType itself, i.e., you may choose to
 // either apply the FreeType License or the GNU General Public License version 2.
@@ -17,15 +17,69 @@ Interface
 {$MESSAGE FATAL 'Replace every instance of "[Ref] Const" in this file by "Constref", then disable this error.'}
 {$ENDIF}
 
-Uses SysUtils;
+Uses SysUtils{$IFNDEF VER230}, AnsiStrings{$ENDIF};
 
 Const
-   FreeTypeDLL = 'freetype-6.dll';
+   FreeTypeDLL = 'freetype.dll';
 
 Type
    EFreeType = Class(Exception)
    End;
 
+{$REGION 'fttypes.h'}
+   // Basic Data Types
+
+   TFTTag     = Type Cardinal;
+   TFTF2Dot14 = Type SmallInt;
+   TFTF26Dot6 = Type LongInt;
+   TFTFixed   = Type LongInt;
+
+   TFTError = Integer;
+
+   TFTErrorHelper = Record Helper For TFTError
+   Public
+      Function Base: Byte; Inline;
+      Function Module: Word; Inline;
+      Function Equals(Const AError: TFTError): Boolean; Inline;
+      Function Inequals(Const AError: TFTError): Boolean; Inline;
+   End;
+
+   TFTUnitVector = Record
+      X, Y: TFTF2Dot14;
+   End;
+
+   PFTMatrix = ^TFTMatrix;
+
+   TFTMatrix = Record
+      XX, XY, YX, YY: TFTFixed;
+   End;
+
+   TFTData = Record
+      Pointer: PByte;
+      Length: Integer;
+   End;
+
+   TFTGeneric = Record
+      Data: Pointer;
+      Finalizer: Procedure(AObject: Pointer); Cdecl;
+   End;
+
+   // List management
+   PFTListNode = ^TFTListNode;
+
+   TFTListNode = Record
+      Prev, Next: PFTListNode;
+      Data: Pointer;
+   End;
+
+   PFTList = ^TFTList;
+
+   TFTList = Record
+      Head, Tail: PFTListNode;
+
+      Function IsEmpty: Boolean; Inline;
+   End;
+{$ENDREGION}
 {$REGION 'ftsystem.h'}
    // System interface. How FreeType manages memory and i/o
 
@@ -99,6 +153,12 @@ Type
       NumPaletteEntries: Word;
       PaletteEntryNameIds: PWord;
    End;
+
+   // Layer management
+   TFTLayerIterator = Record
+      NumLayers, Layer: Cardinal;
+      P: PByte;
+   End;
 {$ENDREGION}
 {$REGION 'ftimage.h'}
 
@@ -143,7 +203,7 @@ Type
       Property ScanLine[Const ALine: Cardinal]: PByte Read GetScanLine;
    End;
 
-   TFTOutlineFlag  = (ftofOwner, ftofEvenOddFill, ftofReverseFill, ftofIgnoreDropouts, ftofSmartDropouts, ftofIncludeStubs, ftofHighPrecision = 8, ftofSinglePass);
+   TFTOutlineFlag  = (ftofOwner, ftofEvenOddFill, ftofReverseFill, ftofIgnoreDropouts, ftofSmartDropouts, ftofIncludeStubs, ftofOverlap, ftofHighPrecision = 8, ftofSinglePass);
    TFTOutlineFlags = Set Of ftofOwner .. TFTOutlineFlag($1F);
 
    TFTCurveTag  = (ftctOn, ftctCubic, ftctHasScanmode, ftctTouchX, ftctTouchY);
@@ -195,18 +255,13 @@ Type
    TFTGlyphFormat = (ftgfNone = $00000000, ftgfComposite = $636F6D70 { comp } , ftgfBitmap = $62697473 { bits } , ftgfOutline = $6F75746C { outl } , ftgfPlotter = $706C6F74 { plot } );
 
    // Raster definitions
-
-   TFTRaster = Record
-      // internal type
-   End;
-
    TFTSpan = Record
       X: SmallInt;
       Len: Word;
       Coverage: Byte;
    End;
 
-   TFTRasterFlag  = (ftrfAA, ftrfDirect, ftrfClip);
+   TFTRasterFlag  = (ftrfAA, ftrfDirect, ftrfClip, ftrfSDF);
    TFTRasterFlags = Set Of ftrfAA .. TFTRasterFlag($1F);
 
    TFTRasterParams = Record
@@ -225,6 +280,10 @@ Type
       ClipBox: TFTBBox;
    End;
 
+   TFTRaster = Record
+      // internal type
+   End;
+
    TFTRasterFuncs = Record
    Public
       GlyphFormat:   TFTGlyphFormat;
@@ -235,59 +294,145 @@ Type
       RasterDone:    Procedure(Const ARaster: TFTRaster); Cdecl;
    End;
 {$ENDREGION}
-{$REGION 'fttypes.h'}
-   // Basic Data Types
+{$REGION 'ftcolor.h experimental interface'}
 
-   TFTTag     = Type Cardinal;
-   TFTF2Dot14 = Type SmallInt;
-   TFTF26Dot6 = Type LongInt;
-   TFTFixed   = Type LongInt;
+   // experimental interface
+   TFTPaintFormat = (ftpfColrLayers = 1, ftpfSolid = 2, ftpfLinearGradient = 4, ftptRadialGradient = 6, ftptSweepGradient = 8, ftpfGlyph = 10, ftpfColrGlyph = 11, ftpfTransform = 12,
+      ftpfTranslate = 14, ftpfScale = 16, ftpfRotate = 24, ftpfSkew = 28, ftpfComposite = 32, ftpfFormatMax = 33, ftpfUnsupported = 255);
 
-   TFTError = Integer;
-
-   TFTErrorHelper = Record Helper For TFTError
-   Public
-      Function Base: Byte; Inline;
-      Function Module: Word; Inline;
-      Function Equals(Const AError: TFTError): Boolean; Inline;
-      Function Inequals(Const AError: TFTError): Boolean; Inline;
+   TFTColorStopIterator = Record
+      NumColorStops, CurrentColorStop: Cardinal;
+      P: PByte;
    End;
 
-   TFTUnitVector = Record
-      X, Y: TFTF2Dot14;
+   TFTColorIndex = Record
+      PaletteIndex: Word;
+      Alpha: TFTF2Dot14;
    End;
 
-   PFTMatrix = ^TFTMatrix;
-
-   TFTMatrix = Record
-      XX, XY, YX, YY: TFTFixed;
+   TFTColorStop = Record
+      StopOffset: TFTF2Dot14;
+      Color: TFTColorIndex;
    End;
 
-   TFTData = Record
-      Pointer: PByte;
-      Length: Integer;
+   TFTPaintExtend = (ftpePad, ftpeRepeat, ftpeReflect);
+
+   TFTColorLine = Record
+      Extend: TFTPaintExtend;
+      ColorStopIterator: TFTColorStopIterator;
    End;
 
-   TFTGeneric = Record
-      Data: Pointer;
-      Finalizer: Procedure(AObject: Pointer); Cdecl;
+   TFTAffine23 = Record
+      XX, XY, dX, YX, YY, dY: TFTFixed;
    End;
 
-   // List management
-   PFTListNode = ^TFTListNode;
+   TFTCompositeMode = (ftcmClear, ftcmSrc, ftcmDest, ftcmSrcOver, ftcmDestOver, ftcmSrcIn, ftcmDestIn, ftcmSrcOut, ftcmDestOut, ftcmSrcAtop, ftcmDestAtop, ftcmXor, ftcmScreen, ftcmOverlay, ftcmDarken,
+      ftcmLighten, ftcmColorDodge, ftcmColorBurn, ftcmHardLight, ftcmSoftLight, ftcmDifference, ftcmExclusion, ftcmMultiply, ftcmHSLHue, ftcmHSLSaturation, ftcmHSLColor, ftcmHSLLuminosity, ftcmMAX);
 
-   TFTListNode = Record
-      Prev, Next: PFTListNode;
-      Data: Pointer;
+   TFTOpaquePaint = Record
+      P: PByte;
+      InsertRootTransform: ByteBool;
    End;
 
-   PFTList = ^TFTList;
-
-   TFTList = Record
-      Head, Tail: PFTListNode;
-
-      Function IsEmpty: Boolean; Inline;
+   TFTPaintColrLayers = Record
+      LayerIterator: TFTLayerIterator;
    End;
+
+   TFTPaintSolid = Record
+      Color: TFTColorIndex;
+   End;
+
+   TFTPaintLinearGradient = Record
+      ColorLine: TFTColorLine;
+      P0, P1, P2: TFTVector;
+   End;
+
+   TFTPaintRadialGradient = Record
+      ColorLine: TFTColorLine;
+      C0: TFTVector;
+      R0: Word;
+      C1: TFTVector;
+      R1: Word;
+   End;
+
+   TFTPaintSweepGradient = Record
+      ColorLine: TFTColorLine;
+      Center: TFTVector;
+      StartAngle, EndAngle: TFTFixed;
+   End;
+
+   TFTPaintGlyph = Record
+      Paint: TFTOpaquePaint;
+      GlyphID: Cardinal;
+   End;
+
+   TFTPaintColrGlyph = Record
+      GlyphID: Cardinal;
+   End;
+
+   TFTPaintTransform = Record
+      Paint: TFTOpaquePaint;
+      Affine: TFTAffine23;
+   End;
+
+   TFTPaintTranslate = Record
+      Paint: TFTOpaquePaint;
+      dX, dY: TFTFixed;
+   End;
+
+   TFTPaintScale = Record
+      Paint: TFTOpaquePaint;
+      ScaleX, ScaleY, CenterX, CenterY: TFTFixed;
+   End;
+
+   TFTPaintRotate = Record
+      Paint: TFTOpaquePaint;
+      Angle, CenterX, CenterY: TFTFixed;
+   End;
+
+   TFTPaintSkew = Record
+      Paint: TFTOpaquePaint;
+      XSkewAngle, YSkewAngle, CenterX, CenterY: TFTFixed;
+   End;
+
+   TFTPaintComposite = Record
+      SourcePaint: TFTOpaquePaint;
+      CompositeMode: TFTCompositeMode;
+      BackdropPaint: TFTOpaquePaint;
+   End;
+
+   TFTColrPaint = Record
+      Format: TFTPaintFormat;
+      Case Byte Of
+         0:
+            (ColrLayers: TFTPaintColrLayers);
+         1:
+            (Glyph: TFTPaintGlyph);
+         2:
+            (Solid: TFTPaintSolid);
+         3:
+            (LinearGradient: TFTPaintLinearGradient);
+         4:
+            (RadialGradient: TFTPaintRadialGradient);
+         5:
+            (SweepGradient: TFTPaintSweepGradient);
+         6:
+            (Transform: TFTPaintTransform);
+         7:
+            (Translate: TFTPaintTranslate);
+         8:
+            (Scale: TFTPaintScale);
+         9:
+            (Rotate: TFTPaintRotate);
+         10:
+            (Skew: TFTPaintSkew);
+         11:
+            (Composite: TFTPaintComposite);
+         12:
+            (ColrGlyph: TFTPaintColrGlyph);
+   End;
+
+   TFTColorRootTransform = (ftrtIncludeRootTransform, ftrtNoRootTransform, ftrtRootTransformMax);
 {$ENDREGION}
 {$REGION 'ftlcdfil.h'}
    // Subpixel Rendering
@@ -397,7 +542,7 @@ Type
       ftlfComputeMetrics, ftlfBitmapMetricsOnly);
    TFTLoadFlags = Set Of ftlfNoScale .. TFTLoadFlag($1F);
 
-   TFTRenderMode = (ftrmNormal, ftrmLight, ftrmMono, ftrmLcd, ftrmLcdV);
+   TFTRenderMode = (ftrmNormal, ftrmLight, ftrmMono, ftrmLcd, ftrmLcdV, ftrmSDF);
 
    TFTLoadFlagsHelper = Record Helper For TFTLoadFlags
    Strict Private
@@ -481,6 +626,7 @@ Type
       Function GetGlyph: PFTGlyphSlot; Inline;
       Function GetSize: PFTSize; Inline;
       Function GetCharMap: PFTCharMap; Inline;
+      Function GetDriverName: AnsiString; Inline;
    Public Type
       TColorGlyphLayerItem = Record
          GlyphIndex, ColorIndex: Cardinal;
@@ -515,6 +661,9 @@ Type
       Procedure SetTransform(Const AMatrix: TFTMatrix); Overload; Inline;
       Procedure SetTransform(Const ADelta: TFTVector); Overload; Inline;
       Procedure SetTransform(Const AMatrix: TFTMatrix; Const ADelta: TFTVector); Overload; Inline;
+      Procedure GetTransform(Out OMatrix: TFTMatrix); Overload; Inline;
+      Procedure GetTransform(Out ODelta: TFTVector); Overload; Inline;
+      Procedure GetTransform(Out OMatrix: TFTMatrix; Out ODelta: TFTVector); Overload; Inline;
 
       Function GetKerning(Const ALeftGlyph, ARightGlyph: Cardinal; Const AKernMode: TFTKerningMode): TFTVector; Inline;
       Function GetTrackKerning(Const APointSize: TFTFixed; Const ADegree: Integer): TFTFixed; Inline;
@@ -551,6 +700,11 @@ Type
       Function SelectPalette(Const APaletteIndex: Word): PPaletteArray; Inline;
       Procedure SetForegroundColor(Const AForegroundColor: TFTColor); Inline;
 
+      Function GetColorGlyphPaint(Const ABaseGlyph: Cardinal; Const ARootTransform: TFTColorRootTransform): TFTOpaquePaint; Inline;
+      Function GetPaintLayers: TArray<TFTOpaquePaint>;
+      Function GetColorLineStops: TArray<TFTColorStop>;
+      Function GetPaint(Const AOpaquePaint: TFTOpaquePaint): TFTColrPaint; Inline;
+
       Property NumFaces: LongInt Read GetNumFaces_;
       Property FaceIndex: LongInt Read GetFaceIndex;
       Property FaceFlags: TFTFaceFlags Read GetFaceFlags;
@@ -573,6 +727,7 @@ Type
       Property Glyph: PFTGlyphSlot Read GetGlyph;
       Property Size: PFTSize Read GetSize;
       Property CharMap: PFTCharMap Read GetCharMap;
+      Property DriverName: AnsiString Read GetDriverName;
    End;
 
    TFTSizeMetrics = Record
@@ -648,11 +803,6 @@ Type
       NumParams: Integer;
       Params: PFTParameter;
    End;
-
-   TFTLayerIterator = Record
-      NumLayers, Layer: Cardinal;
-      P: PByte;
-   End;
 {$ENDREGION}
 {$REGION 'ftmodapi.h'}
 
@@ -673,15 +823,12 @@ Type
       GetInterface: Function(Const Module: TFTModule; Const Name: PAnsiChar): PFTModuleInterface; Cdecl;
    End;
 
-   TFTDebugHookFunc = Procedure(Const AArg: Pointer); Cdecl;
+   TFTDebugHookFunc = Function(Const AArg: Pointer): TFTError; Cdecl;
 
-   TFTTrueTypeEngineType = (fttteNone, fttteUnpatented, ftttePatented);
-{$ENDREGION}
-{$REGION 'ftobj.h'}
-   // this is an internal file, but the following enum should be available (said to be bug that it is hidden)
 {$Z4}
    TFTDebugHook = (ftdhTrueType);
 {$Z1}
+   TFTTrueTypeEngineType = (fttteNone, fttteUnpatented, ftttePatented);
 {$ENDREGION}
 
    TFTManager = Class Abstract
@@ -699,8 +846,8 @@ Type
    Const
       sError          = 'The error %d occured in a FreeType call: %s.';
       FREETYPE_MAJOR  = 2;
-      FREETYPE_MINOR  = 9;
-      FREETYPE_PATCH  = 1;
+      FREETYPE_MINOR  = 11;
+      FREETYPE_PATCH  = 0;
       cMem: TFTMemory = (User: NIL; AllocFunc: TFTManager.MemAlloc; FreeFunc: TFTManager.MemFree; ReallocFunc: TFTManager.MemRealloc);
    Public
       Class Procedure Error(Const AErrorCode: TFTError); Static; // Inline;
@@ -737,6 +884,7 @@ Function FT_Set_Pixel_Sizes(Face: TFTFace; Const APixelWidth, APixelHeight: Card
 Function FT_Load_Glyph(Face: TFTFace; Const AGlyphIndex: Cardinal; Const ALoadFlags: TFTLoadFlags): TFTError; Cdecl; External FreeTypeDLL;
 Function FT_Load_Char(Face: TFTFace; Const ACharCode: LongWord; Const ALoadFlags: TFTLoadFlags): TFTError; Cdecl; External FreeTypeDLL;
 Procedure FT_Set_Transform(Face: TFTFace; Const AMatrix: PFTMatrix; Const ADelta: PFTVector); Cdecl; External FreeTypeDLL;
+Procedure FT_Get_Transform(Const AFace: TFTFace; OMatrix: PFTMatrix; ODelta: PFTVector); Cdecl; External FreeTypeDLL;
 Function FT_Render_Glyph(Var Slot: TFTGlyphSlot; Const RenderMode: TFTRenderMode): TFTError; Cdecl; External FreeTypeDLL;
 Function FT_Get_Kerning(Const AFace: TFTFace; Const ALeftGlyph, ARightGlyph: Cardinal; Const AKernMode: TFTKerningMode; Out OKerning: TFTVector): TFTError; Cdecl; External FreeTypeDLL;
 Function FT_Get_Track_Kerning(Const AFace: TFTFace; Const APointSize: TFTFixed; Const ADegree: Integer; Out OKerning: TFTFixed): TFTError; Cdecl; External FreeTypeDLL;
@@ -752,7 +900,6 @@ Function FT_Face_Properties(Face: TFTFace; Const ANumProperties: Cardinal; Const
 Function FT_Get_Name_Index(Const AFace: TFTFace; Const AGlyphName: PAnsiChar): Cardinal; Cdecl; External FreeTypeDLL;
 Function FT_Get_SubGlyph_Info([Ref] Const AGlyph: TFTGlyphSlot; Const ASubIndex: Cardinal; Out OIndex: Integer; Out OFlags: TFTSubGlyphFlags; Out OArg1, OArg2: Integer; Out OTransform: TFTMatrix)
    : TFTError; Cdecl; External FreeTypeDLL;
-Function FT_Get_Color_Glyph_Layer(Const AFace: TFTFace; Const ABaseGlyph: Cardinal; Out OGlyphIndex, OColorIndex: Cardinal; Var Iterator: TFTLayerIterator): ByteBool; Cdecl; External FreeTypeDLL;
 Function FT_Get_FSType_Flags(Const AFace: TFTFace): TFTFSType; Cdecl; External FreeTypeDLL;
 Function FT_Face_GetCharVariantIndex(Const AFace: TFTFace; Const ACharCode, AVariantSelector: LongWord): Cardinal; Cdecl; External FreeTypeDLL;
 Function FT_Face_GetCharVariantIsDefault(Const AFace: TFTFace; Const ACharCode, AVariantSelector: LongWord): TFTError; Cdecl; External FreeTypeDLL;
@@ -774,6 +921,13 @@ Procedure FT_Library_Version(Const ALibrary: TFTLibrary; Out OMajor, OMinor, OPa
 Function FT_Palette_Data_Get(Const AFace: TFTFace; Out OPalette: TFTPaletteData): TFTError; Cdecl; External FreeTypeDLL;
 Function FT_Palette_Select(Const AFace: TFTFace; Const APaletteIndex: Word; Out OPalette: PFTColor): TFTError; Cdecl; External FreeTypeDLL;
 Function FT_Palette_Set_Foreground_Color(Const AFace: TFTFace; Const AForegroundColor: TFTColor): TFTError; Cdecl; External FreeTypeDLL;
+// Layer management
+Function FT_Get_Color_Glyph_Layer(Const AFace: TFTFace; Const ABaseGlyph: Cardinal; Out OGlyphIndex, OColorIndex: Cardinal; Var Iterator: TFTLayerIterator): ByteBool; Cdecl; External FreeTypeDLL;
+// experimental interface
+Function FT_Get_Color_Glyph_Paint(Const AFace: TFTFace; Const ABaseGlyph: Cardinal; Const ARootTransform: TFTColorRootTransform; Out OPaint: TFTOpaquePaint): ByteBool; Cdecl; External FreeTypeDLL;
+Function FT_Get_Paint_Layers(Const AFace: TFTFace; Var Iterator: TFTLayerIterator; Out OPaint: TFTOpaquePaint): ByteBool; Cdecl; External FreeTypeDLL;
+Function FT_Get_Colorline_Stops(Const AFace: TFTFace; Out OColorStop: TFTColorStop; Var Iterator: TFTColorStopIterator): ByteBool; Cdecl; External FreeTypeDLL;
+Function FT_Get_Paint(Const AFace: TFTFace; Const AOpaquePaint: TFTOpaquePaint; Out OPaint: TFTColrPaint): ByteBool; Cdecl; External FreeTypeDLL;
 {$ENDREGION}
 {$REGION 'ftbitmap.h'}
 Procedure FT_Bitmap_Init(Var Bitmap: TFTBitmap); Cdecl; External FreeTypeDLL;
@@ -871,7 +1025,7 @@ End;
 
 Function TFTBitmap.GetScanLine(Const ALine: Cardinal): PByte;
 Begin
-   Result := PByte(NativeUInt(Buffer) + NativeInt(ALine) * Pitch);
+   Result := PByte(NativeInt(Buffer) + NativeInt(ALine) * Pitch);
 End;
 
 Procedure TFTBitmap.Init;
@@ -1103,9 +1257,39 @@ Begin
    End;
 End;
 
+Function TFTFace.GetColorGlyphPaint(Const ABaseGlyph: Cardinal; Const ARootTransform: TFTColorRootTransform): TFTOpaquePaint;
+Begin
+   If Not FT_Get_Color_Glyph_Paint(Self, ABaseGlyph, ARootTransform, Result) Then
+      Raise EFreeType.Create('No color glyph found, or the root paint could not be retrieved');
+End;
+
+Function TFTFace.GetColorLineStops: TArray<TFTColorStop>;
+Var
+   Iterator: TFTColorStopIterator;
+   Item:     TFTColorStop;
+   I:        Integer;
+Begin
+   Iterator.P := NIL;
+   If FT_Get_Colorline_Stops(Self, Item, Iterator) Then Begin
+      SetLength(Result, Iterator.NumColorStops);
+      Move(Item, Result[0], SizeOf(Item));
+      For I := 1 To High(Result) Do
+         If Not FT_Get_Colorline_Stops(Self, Result[I], Iterator) Then
+            Raise EFreeType.Create('Error while getting colorline stops');
+   End;
+End;
+
 Function TFTFace.GetDescender: SmallInt;
 Begin
    Result := FValue^.Descender;
+End;
+
+Function TFTFace.GetDriverName: AnsiString;
+Type
+   PFTModuleClass  = ^TFTModuleClass;
+   PPFTModuleClass = ^PFTModuleClass;
+Begin
+   Result := PPFTModuleClass(FValue^.FDriver)^.ModuleName;
 End;
 
 Function TFTFace.GetFaceFlags: TFTFaceFlags;
@@ -1147,7 +1331,7 @@ Function TFTFace.GetGlyphName(Const AGlyphIndex: Cardinal): AnsiString;
 Begin
    SetLength(Result, 255);
    TFTManager.Error(FT_Get_Glyph_Name(Self, AGlyphIndex, @Result[1], 255));
-   SetLength(Result, StrLen(PAnsiChar(@Result[1])));
+   SetLength(Result, {$IFNDEF VER230}AnsiStrings.{$ENDIF}StrLen(PAnsiChar(@Result[1])));
 End;
 
 Function TFTFace.GetHeight: SmallInt;
@@ -1208,6 +1392,28 @@ Begin
    Result := FValue^.NumGlyphs;
 End;
 
+Function TFTFace.GetPaint(Const AOpaquePaint: TFTOpaquePaint): TFTColrPaint;
+Begin
+   If Not FT_Get_Paint(Self, AOpaquePaint, Result) Then
+      Raise EFreeType.Create('Error while getting details for a paint');
+End;
+
+Function TFTFace.GetPaintLayers: TArray<TFTOpaquePaint>;
+Var
+   Iterator: TFTLayerIterator;
+   Item:     TFTOpaquePaint;
+   I:        Integer;
+Begin
+   Iterator.P := NIL;
+   If FT_Get_Paint_Layers(Self, Iterator, Item) Then Begin
+      SetLength(Result, Iterator.NumLayers);
+      Move(Item, Result[0], SizeOf(Item));
+      For I := 1 To High(Result) Do
+         If Not FT_Get_Paint_Layers(Self, Iterator, Result[I]) Then
+            Raise EFreeType.Create('Error while getting paint layers');
+   End;
+End;
+
 Function TFTFace.GetPalette: TFTPaletteData;
 Begin
    TFTManager.Error(FT_Palette_Data_Get(Self, Result));
@@ -1254,6 +1460,21 @@ End;
 Function TFTFace.GetTrackKerning(Const APointSize: TFTFixed; Const ADegree: Integer): TFTFixed;
 Begin
    TFTManager.Error(FT_Get_Track_Kerning(Self, APointSize, ADegree, Result));
+End;
+
+Procedure TFTFace.GetTransform(Out OMatrix: TFTMatrix);
+Begin
+   FT_Get_Transform(Self, @OMatrix, NIL);
+End;
+
+Procedure TFTFace.GetTransform(Out ODelta: TFTVector);
+Begin
+   FT_Get_Transform(Self, NIL, @ODelta);
+End;
+
+Procedure TFTFace.GetTransform(Out OMatrix: TFTMatrix; Out ODelta: TFTVector);
+Begin
+   FT_Get_Transform(Self, @OMatrix, @ODelta);
 End;
 
 Function TFTFace.GetUnderlinePosition: SmallInt;
