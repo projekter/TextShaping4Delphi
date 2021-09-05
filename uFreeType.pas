@@ -836,9 +836,6 @@ Type
       Class Var FLibrary:               TFTLibrary;
       Class Var FMajor, FMinor, FPatch: Integer;
 
-      Class Constructor Initialize;
-      Class Destructor Finalize;
-
       Class Function MemAlloc([Ref] Const AMemory: TFTMemory; Const ASize: Integer): Pointer; Static; Cdecl;
       Class Procedure MemFree([Ref] Const AMemory: TFTMemory; Const ABlock: Pointer); Static; Cdecl;
       Class Function MemRealloc([Ref] Const AMemory: TFTMemory; Const ACurSize, ANewSize: Integer; Const ABlock: Pointer): Pointer; Static; Cdecl;
@@ -849,6 +846,9 @@ Type
       FREETYPE_MINOR  = 11;
       FREETYPE_PATCH  = 0;
       cMem: TFTMemory = (User: NIL; AllocFunc: TFTManager.MemAlloc; FreeFunc: TFTManager.MemFree; ReallocFunc: TFTManager.MemRealloc);
+   Private
+      Class Procedure Initialize; Static;
+      Class Procedure Finalize; Static;
    Public
       Class Procedure Error(Const AErrorCode: TFTError); Static; // Inline;
       Class Property &Library: TFTLibrary Read FLibrary;
@@ -1688,13 +1688,13 @@ Begin
       Raise EFreeType.CreateFmt(sError, [AErrorCode, AnsiString(FT_Error_String(AErrorCode))]);
 End;
 
-Class Destructor TFTManager.Finalize;
+Class Procedure TFTManager.Finalize;
 Begin
    FT_Done_Library(FLibrary);
    // FT_Done_FreeType(FLibrary^);
 End;
 
-Class Constructor TFTManager.Initialize;
+Class Procedure TFTManager.Initialize;
 Begin
    Error(FT_New_Library(cMem, FLibrary));
    FT_Add_Default_Modules(FLibrary);
@@ -1718,5 +1718,13 @@ Class Function TFTManager.MemRealloc([Ref] Const AMemory: TFTMemory; Const ACurS
 Begin
    Result := ReallocMemory(ABlock, ANewSize);
 End;
+
+Initialization
+
+TFTManager.Initialize;
+
+Finalization
+
+TFTManager.Finalize;
 
 End.

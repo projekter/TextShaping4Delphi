@@ -1047,8 +1047,8 @@ Type
    THarfBuzzManager = Class Abstract
    Strict Private
       Class Var FMajor, FMinor, FMicro: Cardinal;
-
-      Class Constructor Initialize;
+   Private
+      Class Procedure Initialize; Static;
    Strict Private
    Const
       HB_VERSION_MAJOR  = 2;
@@ -1796,10 +1796,10 @@ Begin
    hb_set_clear(Self);
 End;
 
-function THBSet.Copy: THBSet;
-begin
+Function THBSet.Copy: THBSet;
+Begin
    Result := hb_set_copy(Self);
-end;
+End;
 
 Function THBSet.Count: Cardinal;
 Begin
@@ -3133,7 +3133,7 @@ End;
 
 { THarfBuzzManager }
 
-Class Constructor THarfBuzzManager.Initialize;
+Class Procedure THarfBuzzManager.Initialize;
 Begin
    If Not hb_version_atleast(HB_VERSION_MAJOR, HB_VERSION_MINOR, HB_VERSION_MICRO) Then
       Raise EHarfBuzz.CreateFmt('HarfBuzz version expected to be at least %s, got %s', [HB_VERSION_STRING, VersionString]);
@@ -3144,5 +3144,9 @@ Class Function THarfBuzzManager.VersionString: AnsiString;
 Begin
    Result := AnsiString(HB_VERSION_STRING);
 End;
+
+Initialization
+
+THarfBuzzManager.Initialize;
 
 End.
