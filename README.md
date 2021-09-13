@@ -102,7 +102,7 @@ Begin
    &End := ABoundary.Last;
    Start := ABoundary.Previous;
    While &End <> TICUBreakIterator.cBrkDone Do Begin
-      WriteLn(Copy(cStringToExamine, Start +1, &End - Start));
+      WriteLn(Copy(AStr, Start +1, &End - Start));
       &End := Start;
       Start := ABoundary.Previous;
    end;
