@@ -135,7 +135,7 @@ Type
       FValue: Pointer;
 {$HINTS ON}
    Public
-      Procedure Free; Inline;
+      Procedure Destroy; Inline;
       Function Count: Integer; Inline;
       Function UNext: UnicodeString; Inline;
       Function Next: AnsiString; Inline;
@@ -619,7 +619,7 @@ Type
       FPrivB, FPrivC: Integer;
 {$HINTS ON}
    Public
-      Procedure Free; Inline;
+      Procedure Destroy; Inline;
       Class Function CreateUTF8(Const &AS: AnsiString): PICUText; Static; Inline;
       Procedure OpenUTF8(Const &AS: AnsiString); Inline;
       Class Function CreateUChars(Const &AS: UnicodeString): PICUText; Static; Inline;
@@ -735,7 +735,7 @@ Type
       Class Function CreateBinaryRules(Const ABinaryRules: TBytes; Const AText: UnicodeString): TICUBreakIterator; Static; Inline;
       Function SafeClone: TICUBreakIterator; Deprecated; Inline;
       Function Clone: TICUBreakIterator; Experimental; Inline;
-      Procedure Free; Inline;
+      Procedure Destroy; Inline;
       Procedure SetText(Const AText: UnicodeString); Inline;
       Procedure SetUText(Var Text: TICUText); Inline;
       Function Current: Integer; Inline;
@@ -1048,7 +1048,7 @@ End;
 
 { TICUEnumeration }
 
-Procedure TICUEnumeration.Free;
+Procedure TICUEnumeration.Destroy;
 Begin
    ICUenum_close(Self);
 End;
@@ -1150,7 +1150,7 @@ Begin
    TICUManager.Error(Err);
 End;
 
-Procedure TICUText.Free;
+Procedure TICUText.Destroy;
 Begin
    ICUtext_close(Self);
 End;
@@ -2052,7 +2052,7 @@ Begin
    TICUManager.Error(Err);
 End;
 
-Procedure TICUBreakIterator.Free;
+Procedure TICUBreakIterator.Destroy;
 Begin
    ICUbrk_close(Self);
 End;
